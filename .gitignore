@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pth
+*.pt
+*.pkl
+*.log
+*.csv
+/data/
+/units/
+/output/
+/out/
+*.egg-info/
+.env
+.configs/

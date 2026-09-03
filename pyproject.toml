@@ -67,3 +67,5 @@ addopts = "-q"
 markers = [
   "integration: needs Docker, a registry, a network or a sibling service; skipped in unit runs",
 ]
+[project.scripts]
+forecast = "my_agent:main"

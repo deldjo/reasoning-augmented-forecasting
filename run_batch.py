@@ -35,7 +35,7 @@ for unit in unit_dirs:
     for use_text in [False, True]:
         mode = "text" if use_text else "blind"
         command = [
-            "python", "my_agent_v2.py",
+            "python", "my_agent.py",
             "--panels", unit_path,
             "--text", os.path.join(unit_path, "text"),
             "--asof", asof,

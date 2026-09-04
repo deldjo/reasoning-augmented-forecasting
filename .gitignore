@@ -1,14 +1,26 @@
+# Python 缓存
 __pycache__/
 *.pyc
+
+# 模型权重
 *.pth
 *.pt
 *.pkl
+
+# 日志
 *.log
-*.csv
+
+# 中间实验数据和输出（排除核心数据）
 /data/
 /units/
 /output/
 /out/
 *.egg-info/
+
+# 环境与配置
 .env
 .configs/
+
+# 忽略普通数据 CSV，但保留核心实验记录！
+*.csv
+!ablation_results.csv

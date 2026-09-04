@@ -1,8 +1,8 @@
 """
 Track 2 – Reasoning-Augmented Time-Series Forecasting
-Scoring package public surface.
+Baselines package public surface.
 """
 
-from .scoring import LEADERBOARD_SORT, build_verifier
+from .base import BaselineForecaster
 
-__all__ = ["build_verifier", "LEADERBOARD_SORT"]
+__all__ = ["BaselineForecaster"]

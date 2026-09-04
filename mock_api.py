@@ -7,12 +7,12 @@ class Handler(BaseHTTPRequestHandler):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         
-        # 模拟返回真实的 LLM 结构（这里故意返回 -0.7 和 True）
+        # 模拟返回真实的 LLM 结构
         response = {
             "choices": [
                 {
                     "message": {
-                        "content": '{"sentiment": -0.7, "risk": true}'
+                        "content": '{"sentiment": -0.7, "risk": true, "vol_adjust": 1.8}'
                     }
                 }
             ]

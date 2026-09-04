@@ -36,7 +36,7 @@ def find_parquet_files(directory):
     return parquet_files
 
 def analyze_text(text_dir):
-    """调用大模型API提取文本信号（含关键词回退逻辑）"""
+    """调用大模型API提取多维文本信号（含关键词回退逻辑）"""
     text_files = []
     if os.path.exists(text_dir):
         for root, dirs, files in os.walk(text_dir):
@@ -54,14 +54,15 @@ def analyze_text(text_dir):
     
     all_text = all_text[:3000]
     
-    # 默认初始化（确保此处必定定义）
+    # 默认初始化
     sentiment_score = 0.0
     risk_flag = False
+    vol_adjust = 1.0
 
     endpoint = os.environ.get("MODEL_ENDPOINT")
     model_name = os.environ.get("MODEL_NAME", "qwen2.5-72b-instruct")
     
-    # 如果没有 API，使用关键词逻辑
+    # 如果没有 API，使用关键词逻辑（本地兜底）
     if not endpoint:
         hawkish_words = ["rate hike", "tightening", "inflation risk", "hawkish", "surplus"]
         dovish_words = ["rate cut", "easing", "recession", "dovish", "deficit"]
@@ -72,7 +73,9 @@ def analyze_text(text_dir):
             if w in all_text.lower(): sentiment_score -= 0.2
         for w in shock_words:
             if w in all_text.lower(): risk_flag = True
-        return sentiment_score, risk_flag
+        if risk_flag:
+            vol_adjust = 1.8
+        return sentiment_score, risk_flag, vol_adjust
 
     # 正式调用 API
     try:
@@ -80,7 +83,8 @@ def analyze_text(text_dir):
 请根据以下金融新闻/政策文本，判断其对宏观市场的整体情绪：
 1. 输出一个介于 -1 到 1 之间的“情绪分数”（-1为极度利空，1为极度利多）。
 2. 如果存在极端风险事件，输出“true”，否则输出“false”。
-仅输出一个 JSON 格式：{{"sentiment": -0.6, "risk": true}}
+3. 输出一个“波动率调整系数”（1.0表示常规波动，1.5表示波动加剧，2.0表示极度恐慌）。
+仅输出一个 JSON 格式：{{"sentiment": -0.6, "risk": true, "vol_adjust": 1.8}}
 
 文本内容：
 {all_text}
@@ -102,10 +106,10 @@ def analyze_text(text_dir):
             content = result["choices"][0]["message"]["content"]
             content = content.strip().strip("```json").strip("```")
             data = json.loads(content)
-            return float(data["sentiment"]), bool(data["risk"])
+            return float(data["sentiment"]), bool(data["risk"]), float(data.get("vol_adjust", 1.0))
         else:
             print(f"API 返回错误代码: {response.status_code}")
-            return 0.0, False
+            return 0.0, False, 1.0
     except Exception as e:
         print(f"API 调用失败，已回退到本地逻辑: {e}")
         # 回退逻辑
@@ -118,7 +122,9 @@ def analyze_text(text_dir):
             if w in all_text.lower(): sentiment_score -= 0.2
         for w in shock_words:
             if w in all_text.lower(): risk_flag = True
-        return sentiment_score, risk_flag
+        if risk_flag:
+            vol_adjust = 1.8
+        return sentiment_score, risk_flag, vol_adjust
 
 def main():
     # 兼容 Docker 传入的 forecast 命令
@@ -156,9 +162,10 @@ def main():
     
     sentiment_score = 0.0
     risk_flag = False
+    vol_adjust = 1.0
     if args.use_text:
-        sentiment_score, risk_flag = analyze_text(args.text)
-        print(f"[文本推理模式] 情绪分数: {sentiment_score:.2f}, 尾部风险: {risk_flag}")
+        sentiment_score, risk_flag, vol_adjust = analyze_text(args.text)
+        print(f"[文本推理模式] 情绪分数: {sentiment_score:.2f}, 尾部风险: {risk_flag}, 波动调整: {vol_adjust}")
     else:
         print("[纯数值模式] 执行ARIMA基线预测")
     
@@ -181,8 +188,7 @@ def main():
                     std_val = 0.01
                 if args.use_text:
                     mean_val = mean_val * (1 + sentiment_score * 0.05)
-                    if risk_flag:
-                        std_val = std_val * 1.5
+                    std_val = std_val * vol_adjust
                 samples = np.random.normal(mean_val, std_val, n_draws)
                 for d in range(n_draws):
                     forecast_rows.append({
@@ -215,8 +221,8 @@ def main():
     
     with open(rationale_path, "w") as f:
         f.write(f"# {unit_id}\n\nAS OF Date: {asof}\n\n## 推理逻辑\n")
-        f.write(f"当前模型: {'ARIMA+LLM文本推理' if args.use_text else 'ARIMA基线'}\n")
-        f.write(f"文本情绪分数: {sentiment_score}, 尾部风险: {risk_flag}\n")
+        f.write(f"当前模型: {'ARIMA+LLM多维文本推理' if args.use_text else 'ARIMA基线'}\n")
+        f.write(f"文本情绪分数: {sentiment_score}, 尾部风险: {risk_flag}, 波动调整: {vol_adjust}\n")
 
 if __name__ == "__main__":
     main()
